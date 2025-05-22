@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div id="spot-app">
+  <h2>현물 상품 가격 비교</h2>
+  <div>
+    <label>시작일: <input type="date" v-model="start_date"></label>
+    <label>종료일: <input type="date" v-model="end_date"></label>
+    <button @click="loadData('gold')">금</button>
+    <button @click="loadData('silver')">은</button>
+  </div>
+  <canvas id="spotChart"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/spot_prices.js' %}"></script>
+{% endblock %}

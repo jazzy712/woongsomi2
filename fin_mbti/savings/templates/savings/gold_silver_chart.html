@@ -1,0 +1,41 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>{{ metal|title }} 가격 추이</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h4>{{ metal|title }} 가격 추이</h4>
+  <canvas id="priceChart" width="400" height="200"></canvas>
+
+  <script>
+    const labels = {{ labels|safe }};
+    const prices = {{ prices|safe }};
+
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: '{{ metal|title }} 가격',
+          data: prices,
+          fill: false,
+          borderColor: 'gold',
+          tension: 0.1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: false
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

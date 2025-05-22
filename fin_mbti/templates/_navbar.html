@@ -1,0 +1,52 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="{% url 'mbti:main' %}">
+      <i class="fas fa-chart-pie me-2"></i>금융 MBTI
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'mbti:survey' %}">성향 테스트</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'mbti:types' %}">유형 살펴보기</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'boards:index' %}">커뮤니티</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'savings:deposit_list' %}">예적금 비교</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'savings:spot_prices' %}">현물 가격 비교</a>
+        </li>
+      </ul>
+      
+      <ul class="navbar-nav ms-auto">
+        {% if user.is_authenticated %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'accounts:profile' user.pk %}">
+              {{ user.username }}
+              {% if user.mbti_type and user.show_mbti_badge %}
+                <span class="mbti-badge mbti-{{ user.mbti_type.type_code }}">{{ user.mbti_type.type_code }}</span>
+              {% endif %}
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url "accounts:logout" %}">로그아웃</a>
+          </li>
+        {% else %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'accounts:login' %}">로그인</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'accounts:signup' %}">회원가입</a>
+          </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>

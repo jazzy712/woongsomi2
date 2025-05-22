@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>예적금 금리 비교</h2>
+<table class="table">
+  <thead>
+    <tr>
+      <th>은행</th>
+      <th>상품명</th>
+      <th>가입방법</th>
+      <th>상세</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in products %}
+    <tr>
+      <td>{{ p.bank }}</td>
+      <td>{{ p.name }}</td>
+      <td>{{ p.join_way }}</td>
+      <td><a href="{% url 'savings:deposit_detail' p.pk %}">보기</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

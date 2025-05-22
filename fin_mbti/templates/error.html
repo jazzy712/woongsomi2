@@ -1,0 +1,12 @@
+<!-- templates/error.html -->
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+    <div class="alert alert-danger">
+        <h4 class="alert-heading">오류 발생!</h4>
+        <p>{{ message }}</p>
+        <hr>
+        <a href="{% url 'mbti:survey' %}" class="btn btn-primary">설문 페이지로 돌아가기</a>
+    </div>
+</div>
+{% endblock %}

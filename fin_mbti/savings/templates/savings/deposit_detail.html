@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>{{ product.name }} ({{ product.bank }})</h2>
+<p><strong>가입 방법:</strong> {{ product.join_way }}</p>
+<p><strong>가입 대상:</strong> {{ product.join_member }}</p>
+<p><strong>우대 조건:</strong> {{ product.spcl_cnd }}</p>
+
+<h4>금리 옵션</h4>
+<table class="table">
+  <thead>
+    <tr><th>기간</th><th>기본 금리</th><th>최고 금리</th></tr>
+  </thead>
+  <tbody>
+    {% for opt in product.options.all %}
+    <tr>
+      <td>{{ opt.save_trm }}개월</td>
+      <td>{{ opt.intr_rate }}%</td>
+      <td>{{ opt.intr_rate2 }}%</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if user.is_authenticated %}
+<form action="{% url 'savings:subscribe' product.pk %}" method="POST">
+  {% csrf_token %}
+  <button class="btn btn-primary">가입하기</button>
+</form>
+{% endif %}
+{% endblock %}

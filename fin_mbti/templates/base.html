@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>금융 MBTI - {% block title %}금융 성향 테스트 및 상품 추천{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    .mbti-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: #fff;
+    }
+    /* MBTI 유형별 색상 */
+    .mbti-SPM { background-color: #4a6fa5; }
+    .mbti-SPI { background-color: #6a8caf; }
+    .mbti-SIM { background-color: #5d9ea6; }
+    .mbti-SII { background-color: #6db9c0; }
+    .mbti-RPM { background-color: #d17a7a; }
+    .mbti-RPI { background-color: #e09393; }
+    .mbti-RIM { background-color: #c17d5e; }
+    .mbti-RII { background-color: #d49377; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="container mt-4">
+    <div class="mb-4">
+      {% include '_navbar.html' %}
+    </div>
+    
+    <div class="my-4">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+    
+    <div class="mb-5">
+      {% block content %}
+      {% endblock content %}
+    </div>
+    
+    <footer class="mt-5 pt-4 border-top text-center text-muted">
+      <p>&copy; 2025 금융 MBTI. All rights reserved.</p>
+    </footer>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  {% block extra_scripts %}{% endblock extra_scripts %}
+  
+  {% block scripts %}{% endblock %}
+</body>
+</html>

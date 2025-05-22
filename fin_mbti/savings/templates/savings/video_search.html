@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+  <h2>관심 종목 영상 검색</h2>
+  <div class="input-group mb-3">
+    <input type="text" id="yt-keyword" class="form-control" placeholder="검색어를 입력하세요">
+    <button id="yt-search-btn" class="btn btn-primary">검색</button>
+  </div>
+  <div id="video-results" class="row g-3"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/youtube_search.js' %}"></script>
+{% endblock %}
