@@ -17,4 +17,5 @@ urlpatterns = [
     path('banks/', views.bank_search_page, name='bank_search'),
     path('api/banks/', views.banks_search_api, name='banks_search_api'),
     path('recommendations/', recommendations_view, name='recommendations'),
-]
+    path('compare/', views.compare_deposits, name='compare_deposits'),
+]   

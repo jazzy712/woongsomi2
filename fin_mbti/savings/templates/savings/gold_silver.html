@@ -4,11 +4,15 @@
 {% block content %}
 <div id="spot-app">
   <h2>현물 상품 가격 비교</h2>
-  <div>
-    <label>시작일: <input type="date" v-model="start_date"></label>
-    <label>종료일: <input type="date" v-model="end_date"></label>
-    <button @click="loadData('gold')">금</button>
-    <button @click="loadData('silver')">은</button>
+  <div class="mb-3">
+    <label>시작일:
+      <input type="date" v-model="start_date">
+    </label>
+    <label class="ms-4">종료일:
+      <input type="date" v-model="end_date">
+    </label>
+    <button class="btn btn-sm btn-outline-primary ms-3" @click="loadData('gold')">금</button>
+    <button class="btn btn-sm btn-outline-secondary ms-1" @click="loadData('silver')">은</button>
   </div>
   <canvas id="spotChart"></canvas>
 </div>

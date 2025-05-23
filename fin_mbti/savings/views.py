@@ -2,14 +2,18 @@
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
-from .models import DepositProduct
+from .models import DepositProduct, AnnuityProduct
 from django.contrib.auth.decorators import login_required
+from django.utils.dateparse import parse_date
+from django.urls import reverse as url_reverse
 import pandas as pd
 from datetime import datetime
 import os
-import requests
+import requests, operator
 from django.conf import settings
 from .services import recommend_for_user
+from itertools import groupby
+import pandas as pd
 
 def deposit_list(request):
     products = DepositProduct.objects.all().order_by('-created_at')
@@ -108,24 +112,132 @@ def youtube_search_api(request):
     return JsonResponse(data)
 
 def bank_search_page(request):
-    # 템플릿에 JS 키만 넘겨 줍니다
+    """
+    템플릿에 Kakao JS API key 전달
+    """
     return render(request, 'savings/bank_search.html', {
         'KAKAO_JS_KEY': settings.KAKAO_JS_KEY
     })
 
-def banks_search_api(request):
-    q = request.GET.get('q')
-    if not q:
-        return JsonResponse({'error': 'no query'}, status=400)
 
-    url = 'https://dapi.kakao.com/v2/local/search/address.json'
+def banks_search_api(request):
+    """
+    GET parameters:
+      - province: 시/도 이름 (예: '서울특별시')
+      - district: 구/군/시 이름 (예: '강남구')
+      - bank_name: 검색할 은행명 (기본 '은행')
+
+    1) 시/도+구 조합으로 주소 검색 → 위경도 취득
+    2) 취득한 위경도 기준으로 은행 키워드 검색 (반경 5km, 거리순)
+    3) Kakao Local API 응답을 그대로 JSON 반환
+    """
+    prov      = request.GET.get('province')
+    dist      = request.GET.get('district')
+    bank_name = request.GET.get('bank_name', '은행')
+
+    if not prov or not dist:
+        return JsonResponse(
+            {'error': 'province and district are required'}, 
+            status=400
+        )
+
     headers = {'Authorization': f'KakaoAK {settings.KAKAO_REST_KEY}'}
-    resp = requests.get(url, params={'query': q}, headers=headers)
-    return JsonResponse(resp.json())
+    region  = f"{prov} {dist}"
+
+    # 1) 주소 → 위경도
+    addr_url  = 'https://dapi.kakao.com/v2/local/search/address.json'
+    addr_resp = requests.get(addr_url, params={'query': region}, headers=headers)
+    if addr_resp.status_code != 200:
+        return JsonResponse(
+            {'error': 'failed to geocode region'},
+            status=addr_resp.status_code
+        )
+    addr_data = addr_resp.json().get('documents', [])
+    if not addr_data:
+        return JsonResponse(
+            {'error': f'could not find coordinates for "{region}"'},
+            status=404
+        )
+
+    # 첫 번째 매칭 결과 사용
+    longitude = addr_data[0]['x']
+    latitude  = addr_data[0]['y']
+
+    # 2) 은행 키워드 검색
+    kw_url    = 'https://dapi.kakao.com/v2/local/search/keyword.json'
+    params    = {
+        'query':  bank_name,
+        'x':      longitude,
+        'y':      latitude,
+        'radius': 5000,
+        'sort':   'distance',
+        'size':   15
+    }
+    kw_resp = requests.get(kw_url, params=params, headers=headers)
+
+    # 3) 결과 반환
+    return JsonResponse(kw_resp.json(), status=kw_resp.status_code)
 
 @login_required
 def recommendations_view(request):
     recommendations = recommend_for_user(request.user, top_n=5)
     return render(request, 'savings/recommendations.html', {
         'recommendations': recommendations
+    })
+
+def compare_deposits(request):
+    # 정렬 기준 & 방향
+    sort_by = request.GET.get('sort',  'interest')    # interest|period|limit
+    order   = request.GET.get('order', 'desc')        # asc|desc
+    is_desc = (order == 'desc')                       # Boolean
+
+    items = []
+
+    # --- 예·적금 데이터 수집 ---
+    for p in DepositProduct.objects.all():
+        try:
+            rate = float(p.mtrt_int)
+        except (TypeError, ValueError):
+            rate = 0.0
+        items.append({
+            'category':   '예·적금',
+            'bank':       p.bank,
+            'name':       p.name,
+            'join_way':   p.join_way,
+            'interest':   rate,
+            'period':     p.save_trm or 0,
+            'limit':      p.max_limit or 0,
+            'detail_url': url_reverse('savings:deposit_detail', args=[p.pk]),
+        })
+
+    # --- 연금저축 데이터 수집 ---
+    for p in AnnuityProduct.objects.all():
+        try:
+            rate = float(getattr(p, 'avg_prft_rate', 0.0))
+        except (TypeError, ValueError):
+            rate = 0.0
+        items.append({
+            'category':   '연금저축',
+            'bank':       p.bank,
+            'name':       p.name,
+            'join_way':   getattr(p, 'join_way', ''),
+            'interest':   rate,
+            'period':     getattr(p, 'save_trm', 0) or 0,
+            'limit':      getattr(p, 'max_limit', 0) or 0,
+            'detail_url': url_reverse('savings:annuity_detail', args=[p.pk]),
+        })
+
+    # 정렬 적용
+    items.sort(key=lambda x: x.get(sort_by, 0), reverse=is_desc)
+
+    # 카테고리별 그룹화
+    grouped = {
+        cat: list(group)
+        for cat, group in groupby(items, key=lambda x: x['category'])
+    }
+
+    return render(request, 'savings/compare_deposits.html', {
+        'grouped': grouped,
+        'sort_by': sort_by,
+        'order':   order,
     })

@@ -10,6 +10,10 @@ class DepositProduct(models.Model):
     spcl_cnd = models.TextField(blank=True, null=True)
     max_limit = models.BigIntegerField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # 만기 이자율(%)
+    mtrt_int = models.FloatField('만기 이자율', default=0.0)
+    # 저축 기간(개월)
+    save_trm = models.PositiveIntegerField('저축 기간(개월)', null=True, blank=True)
 
 class DepositOption(models.Model):
     product = models.ForeignKey(DepositProduct, on_delete=models.CASCADE, related_name='options')

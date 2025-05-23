@@ -1,6 +1,11 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>예적금 금리 비교</h2>
+<!-- 예·적금 금리 비교 페이지로 이동하는 링크 -->
+<a href="{% url 'savings:compare_deposits' %}"
+    class="btn btn-outline-info mb-4">
+  예·적금 금리 비교 보기
+</a>
 <table class="table">
   <thead>
     <tr>

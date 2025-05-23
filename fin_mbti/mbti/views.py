@@ -1,52 +1,69 @@
 # mbti/views.py
+import random
+import requests
+import openai
 
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts            import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
-from django.utils import timezone
-from django.http import JsonResponse
-from django.db.models import Count
-from django.urls import reverse
+from django.utils               import timezone
+from django.db.models           import Count
+from django.urls                import reverse
+from django.http                import JsonResponse
 
-from .services import calculate_financial_mbti
-from savings.services import recommend_for_user
-from savings.models import DepositProduct, AnnuityProduct
+from rest_framework.response    import Response
+from rest_framework.decorators  import api_view
 
+from django.conf                import settings
 
-import requests
-from django.conf import settings
-
-from rest_framework.response import Response
-from rest_framework.decorators import api_view
-
-from .models import (
-    Survey, SurveyQuestion, SurveyResponse,
-    PersonalityType, Recommendation, UserShare
+from .models       import (
+    Survey,
+    SurveyQuestion,
+    SurveyResponse,
+    PersonalityType,
+    Recommendation,
+    UserShare
 )
-from .serializers import SurveyQuestionSerializer
+from .serializers  import SurveyQuestionSerializer
+from .services     import calculate_financial_mbti
 from boards.models import Board
+from savings.services     import recommend_for_user
+from savings.models       import DepositProduct, AnnuityProduct
 
-import openai
+# OpenAI 키 설정
 openai.api_key = settings.OPENAI_API_KEY
 
 
 @login_required
 def survey(request):
+    # 1) 현재 활성 설문
     current_survey = get_object_or_404(Survey, pk=1)
-    questions = SurveyQuestion.objects.filter(survey=current_survey).order_by('order')
 
-    if not questions.exists():
-        return render(request, 'error.html', {
-            'message': '등록된 설문 문항이 없습니다. 관리자에게 문의하세요.'
-        })
+    # 2) 카테고리별로 4개씩 랜덤 추출
+    categories = [
+        'consumption',  # 소비 습관/계획성
+        'investment',   # 저축/투자 습관
+        'risk',         # 위험 선호/회피 성향
+        'analysis',     # 정보 탐색/분석/계획
+        'goal',         # 목표/동기/감정/기타
+    ]
+    picked = []
+    for cat in categories:
+        qs = list(SurveyQuestion.objects.filter(survey=current_survey, category=cat))
+        if len(qs) >= 4:
+            picked.extend(random.sample(qs, 4))
+        else:
+            picked.extend(qs)
+    random.shuffle(picked)
 
     if request.method == 'POST':
+        # 기존 응답 삭제
         SurveyResponse.objects.filter(
             user=request.user,
             question__survey=current_survey
         ).delete()
-
-        for q in questions:
+        # 새 응답 저장
+        for q in picked:
             val = request.POST.get(f'question_{q.id}')
             if val and val.isdigit():
                 SurveyResponse.objects.create(
@@ -54,17 +71,18 @@ def survey(request):
                     question=q,
                     answer_value=int(val)
                 )
-
+        # MBTI 계산 후 사용자 업데이트
         mbti_type = calculate_financial_mbti(request.user, current_survey)
         request.user.mbti_type = mbti_type
         request.user.mbti_test_date = timezone.now()
         request.user.save()
-
+        # 결과 페이지로 이동
         return redirect('mbti:result')
 
+    # GET일 때 설문 폼 렌더링
     return render(request, 'survey.html', {
-        'survey': current_survey,
-        'questions': questions,
+        'survey':    current_survey,
+        'questions': picked,
     })
 
 
@@ -72,40 +90,46 @@ def survey(request):
 def result(request):
     if not request.user.mbti_type:
         return redirect('mbti:survey')
-
     mbti_type = request.user.mbti_type
 
-    # OpenAI + hybrid 추천 실행
-    financial_recs = recommend_for_user(request.user, top_n=5)
+    recs = recommend_for_user(request.user, top_n=5)
 
-    # 템플릿으로 넘길 형태로 가공
     recommendations = []
-    for rec in financial_recs:
+    for rec in recs:
         prod     = rec['product']
-        provider = rec['provider']
         title    = rec['title']
+        provider = rec['provider']
         score    = rec['score']
         reason   = rec['reason']
 
-        # 상품 상세 URL
+        link = (
+            reverse('savings:deposit_detail', args=[prod.id])
+            if isinstance(prod, DepositProduct)
+            else reverse('savings:annuity_detail', args=[prod.id])
+        )
+
         if isinstance(prod, DepositProduct):
-            link = reverse('savings:deposit_detail', args=[prod.id])
-            desc = f"가입 방법: {prod.join_way}, 우대조건: {prod.spcl_cnd}, 한도: {prod.max_limit}"
+            raw_rate = getattr(prod, 'intr_rate', None) or getattr(prod, 'mtrt_int', None)
+            rate_display = f"{raw_rate:.2f}%" if raw_rate is not None else "—"
+            info = {
+                'interest': rate_display,
+                'term':     f"{prod.save_trm}개월" if getattr(prod, 'save_trm', None) else None,
+            }
         else:
-            link = reverse('savings:annuity_detail', args=[prod.id])
-            desc = (
-                f"유형: {prod.prdt_type_nm}, "
-                f"평균수익률: {prod.avg_prft_rate}%, "
-                f"판매 시작일: {prod.sale_strt_day.strftime('%Y-%m-%d')}"
-            )
+            raw_rate = getattr(prod, 'avg_prft_rate', None)
+            rate_display = f"{raw_rate:.2f}%" if raw_rate is not None else "—"
+            info = {
+                'interest':   rate_display,
+                'start_date': prod.sale_strt_day.strftime('%Y-%m-%d') if prod.sale_strt_day else None,
+            }
 
         recommendations.append({
-            'name': title,
-            'provider': provider,
-            'description': desc,
-            'link': link,
-            'score': score,
-            'reason': reason,
+            'name':       title,
+            'provider':   provider,
+            'reason':     reason,
+            'link':       link,
+            'score':      score,
+            'info':       info,
         })
 
     similar_users_count = request.user.__class__.objects.filter(
@@ -120,10 +144,10 @@ def result(request):
     )
 
     return render(request, 'result.html', {
-        'mbti_type': mbti_type,
-        'recommendations': recommendations,
+        'mbti_type':           mbti_type,
+        'recommendations':     recommendations,
         'similar_users_count': similar_users_count,
-        'popular_posts': popular_posts,
+        'popular_posts':       popular_posts,
     })
 
 
@@ -146,7 +170,7 @@ def recommendations(request):
     mbti_type = request.user.mbti_type
     recs = Recommendation.objects.filter(personality_type=mbti_type)
     return render(request, 'recommendations.html', {
-        'mbti_type': mbti_type,
+        'mbti_type':      mbti_type,
         'recommendations': recs,
     })
 
@@ -157,13 +181,13 @@ def personality_types(request):
 
 
 def personality_type_detail(request, type_code):
-    mbti_type = get_object_or_404(PersonalityType, type_code=type_code)
-    recs = Recommendation.objects.filter(personality_type=mbti_type)
+    mbti_type  = get_object_or_404(PersonalityType, type_code=type_code)
+    recs       = Recommendation.objects.filter(personality_type=mbti_type)
     users_count = mbti_type.users.count()
     return render(request, 'type_detail.html', {
-        'mbti_type': mbti_type,
+        'mbti_type':      mbti_type,
         'recommendations': recs,
-        'users_count': users_count,
+        'users_count':    users_count,
     })
 
 
@@ -182,7 +206,7 @@ def api_submit_responses(request):
     SurveyResponse.objects.filter(user=user, question__survey=data['survey']).delete()
     for r in data['responses']:
         SurveyResponse.objects.create(
-            user=user,
+            user=request.user,
             question_id=r['question'],
             answer_value=r['answer']
         )
@@ -190,18 +214,6 @@ def api_submit_responses(request):
     user.mbti_type = mbti_type
     user.save()
     return Response({'status': 'success', 'mbti_type': mbti_type.type_code})
-
-
-def fetch_deposit_products():
-    url = 'https://finlife.fss.or.kr/finlifeapi/v1/fdrmDpstApi/list.json'
-    params = {
-        'auth': settings.FINLIFE_API_KEY,
-        'topFinGrpNo': '020000',
-        'pageNo': 1,
-    }
-    resp = requests.get(url, params=params)
-    resp.raise_for_status()
-    return resp.json()['result']
 
 
 def main_page(request):

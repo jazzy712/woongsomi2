@@ -1,0 +1,54 @@
+{# templates/savings/compare_deposits.html #}
+{% extends 'base.html' %}
+{% load humanize %}
+{% block content %}
+<div class="container py-4">
+  <h2>예·적금 금리 비교</h2>
+
+  <!-- 정렬 링크 -->
+  <div class="mb-3">
+    정렬:
+    <a href="?sort=interest&order={% if sort_by == 'interest' and order == 'asc' %}desc{% else %}asc{% endif %}">
+      이율 {% if sort_by == 'interest' %}({{ order }}){% endif %}
+    </a> |
+    <a href="?sort=period&order={% if sort_by == 'period' and order == 'asc' %}desc{% else %}asc{% endif %}">
+      가입기간 {% if sort_by == 'period' %}({{ order }}){% endif %}
+    </a> |
+    <a href="?sort=limit&order={% if sort_by == 'limit' and order == 'asc' %}desc{% else %}asc{% endif %}">
+      최고한도 {% if sort_by == 'limit' %}({{ order }}){% endif %}
+    </a>
+  </div>
+
+  <!-- 카테고리별 테이블 출력 -->
+  {% for category, items in grouped.items %}
+    <h4 class="mt-4">{{ category }}</h4>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>은행</th>
+          <th>상품명</th>
+          <th>가입방법</th>
+          <th>이율</th>
+          <th>기간(개월)</th>
+          <th>한도(원)</th>
+          <th>상세</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in items %}
+        <tr>
+          <td>{{ p.bank }}</td>
+          <td>{{ p.name }}</td>
+          <td>{{ p.join_way }}</td>
+          <td>{{ p.interest|floatformat:2 }}%</td>
+          <td>{{ p.period }}</td>
+          <td>{{ p.limit|intcomma }}</td>
+          <td><a href="{{ p.detail_url }}">보기</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endfor %}
+
+</div>
+{% endblock %}
