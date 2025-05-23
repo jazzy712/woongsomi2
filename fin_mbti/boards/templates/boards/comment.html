@@ -1,0 +1,14 @@
+<li class="list-group-item ps-{{ comment.parent_comment|yesno:"5,3" }}">
+  <div class="small text-muted mb-1">
+    {{ comment.author.username }} · {{ comment.created_at|date:"m/d H:i" }}
+    <button class="btn btn-sm btn-link btn-like-comment" data-id="{{ comment.pk }}">
+      <span class="like-icon">{% if user in comment.likes.all %}💙{% else %}🤍{% endif %}</span>
+      <span class="like-count">{{ comment.likes.count }}</span>
+    </button>
+    <button class="btn btn-sm btn-link reply-btn" data-id="{{ comment.pk }}">✎ 답글</button>
+  </div>
+  <div>{{ comment.content|linebreaksbr }}</div>
+  {% for reply in comment.replies.all %}
+    {% include "boards/_comment.html" with comment=reply %}
+  {% endfor %}
+</li>

@@ -16,3 +16,24 @@ class DepositOption(models.Model):
     save_trm = models.IntegerField()  # 예: 6개월, 12개월
     intr_rate = models.FloatField()
     intr_rate2 = models.FloatField()
+    
+class FinancialCompany(models.Model):
+    fin_co_no     = models.CharField(max_length=10, unique=True)  # 회사 코드
+    kor_co_nm     = models.CharField(max_length=100)              # 회사 이름
+    homp_url      = models.URLField(blank=True, null=True)
+    cal_tel       = models.CharField(max_length=20, blank=True, null=True)
+    dcls_chrg_man = models.CharField(max_length=200, blank=True, null=True)
+
+class CompanyBranch(models.Model):
+    company   = models.ForeignKey(FinancialCompany, on_delete=models.CASCADE, related_name='branches')
+    area_cd   = models.CharField(max_length=2)
+    area_nm   = models.CharField(max_length=20)
+    exis_yn   = models.BooleanField()
+
+class AnnuityProduct(models.Model):
+    fin_prdt_cd     = models.CharField(max_length=50, unique=True)   # 상품 코드
+    fin_co          = models.ForeignKey(FinancialCompany, on_delete=models.SET_NULL, null=True)
+    fin_prdt_nm     = models.CharField(max_length=200)
+    avg_prft_rate   = models.FloatField()
+    prdt_type_nm    = models.CharField(max_length=50)
+    sale_strt_day   = models.DateField()

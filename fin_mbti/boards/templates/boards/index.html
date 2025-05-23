@@ -1,26 +1,80 @@
-{% extends 'base.html' %}
+{# boards/templates/boards/index.html #}
 
+{% extends "base.html" %}
 {% block content %}
-<div>
-  {% if user.is_authenticated %}
-    <h2>Hello, {{ user.username }}</h2>
-  {% else  %}
-    <h2>로그인을 해주세요</h2>
-  {% endif %}
-  <div class="d-flex justify-content-between">
-    <h1 class="mb-4">메인 페이지</h1>
-    {% if user.is_authenticated %}
-      <a style="height: 70%;" href="{% url 'boards:create' %}"><button class="btn btn-info">생성하기</button></a>
-    {% endif %}
+  <h1>커뮤니티</h1>
+
+  <!-- 검색 UI -->
+  <div class="mb-3">
+    <input id="search-q" type="text" class="form-control d-inline-block w-25"
+           placeholder="검색어" value="{{ q }}">
+    <button id="btn-search" class="btn btn-outline-secondary">검색</button>
   </div>
-  {% if boards|length == 0 %}아직 게시글이 없습니다
-  {% else %}
-  {% for board in boards %}
-    <p>글번호 : {{ board.id }}</p>  
-    <p>작성자 : {{ board.author }}</p>
-    <p>글제목 : <a href="{% url 'boards:detail' board.id %}" style="text-decoration: none;">{{ board.title }}</a></p>
-    <hr>
-  {% endfor %}
-  {% endif %}
-</div>
-{% endblock content %}
+
+  <div class="row">
+    <div class="col-md-8">
+      <ul class="list-group">
+        {% for b in boards %}
+          <li class="list-group-item d-flex justify-content-between">
+            <div>
+              <span class="badge bg-{{ b.category }}">{{ b.get_category_display }}</span>
+              <a href="{% url 'boards:detail' b.pk %}">{{ b.title }}</a>
+            </div>
+            <div class="text-muted small">
+              {{ b.created_at|date:"m/d H:i" }}
+              <span class="ms-2">👁 {{ b.view_count }}</span>
+              <span class="ms-2">💬 {{ b.num_comments }}</span>
+            </div>
+          </li>
+        {% empty %}
+          <li class="list-group-item text-center text-muted">글이 없습니다.</li>
+        {% endfor %}
+      </ul>
+
+      {# 페이징 #}
+      {% if boards.has_other_pages %}
+        <nav class="mt-3">
+          <ul class="pagination">
+            {% if boards.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ boards.previous_page_number }}">«</a>
+              </li>
+            {% endif %}
+            {% for n in boards.paginator.page_range %}
+              <li class="page-item {% if boards.number == n %}active{% endif %}">
+                <a class="page-link" href="?page={{ n }}">{{ n }}</a>
+              </li>
+            {% endfor %}
+            {% if boards.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ boards.next_page_number }}">»</a>
+              </li>
+            {% endif %}
+          </ul>
+        </nav>
+      {% endif %}
+    </div>
+
+    <div class="col-md-4">
+      <h5>인기글</h5>
+      <ul class="list-group">
+        {% for p in popular_boards %}
+          <li class="list-group-item">
+            <a href="{% url 'boards:detail' p.pk %}">{{ p.title }}</a>
+            <small class="text-muted">({{ p.num_comments }} comments)</small>
+          </li>
+        {% endfor %}
+      </ul>
+      <h5 class="mt-4">MBTI별 필터</h5>
+      <ul class="list-group">
+        {% for t in mbti_types %}
+          <li class="list-group-item">
+            <a href="{% url 'boards:mbti_type_filter' t.type_code %}">
+              {{ t.type_code }}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+{% endblock %}

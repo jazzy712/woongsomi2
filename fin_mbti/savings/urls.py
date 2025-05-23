@@ -2,6 +2,7 @@
 
 from django.urls import path
 from . import views
+from .views import recommendations_view
 
 app_name = 'savings'
 
@@ -13,4 +14,7 @@ urlpatterns = [
     path('spot/data/<str:metal>/', views.get_spot_data, name='spot_data'),
     path('videos/', views.video_search_page, name='video_search_page'),
     path('api/videos/', views.youtube_search_api, name='youtube_search_api'),
+    path('banks/', views.bank_search_page, name='bank_search'),
+    path('api/banks/', views.banks_search_api, name='banks_search_api'),
+    path('recommendations/', recommendations_view, name='recommendations'),
 ]

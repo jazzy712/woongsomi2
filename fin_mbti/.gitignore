@@ -1,15 +1,5 @@
-# Created by https://www.toptal.com/developers/gitignore/api/python,windows,django,database
-# Edit at https://www.toptal.com/developers/gitignore?templates=python,windows,django,database
-
-### Database ###
-*.accdb
-*.db
-*.dbf
-*.mdb
-*.pdb
-*.sqlite3
-*.db-shm
-*.db-wal
+# Created by https://www.toptal.com/developers/gitignore/api/django,python,windows,vue
+# Edit at https://www.toptal.com/developers/gitignore?templates=django,python,windows,vue
 
 ### Django ###
 *.log
@@ -273,6 +263,17 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
+### Vue ###
+# gitignore template for Vue.js projects
+#
+# Recommended template: Node.gitignore
+
+# TODO: where does this rule come from?
+docs/_book
+
+# TODO: where does this rule come from?
+test/
+
 ### Windows ###
 # Windows thumbnail cache files
 Thumbs.db
@@ -299,4 +300,4 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# End of https://www.toptal.com/developers/gitignore/api/python,windows,django,database
+# End of https://www.toptal.com/developers/gitignore/api/django,python,windows,vue

@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% load static %}
+{% block content %}
+<h2>{% if mode=='create' %}새 게시글 작성{% else %}게시글 수정{% endif %}</h2>
+<form method="post">{% csrf_token %}
+  {{ form.as_p }}
+  <button class="btn btn-primary">{% if mode=='create' %}작성{% else %}저장{% endif %}</button>
+  <a href="{% if mode=='create' %}{% url 'boards:index' %}{% else %}{% url 'boards:detail' board.pk %}{% endif %}"
+     class="btn btn-outline-secondary">취소</a>
+</form>
+{% endblock %}

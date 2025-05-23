@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>맞춤 금융상품 추천</h2>
+  <ul class="list-group">
+    {% for rec in recommendations %}
+      <li class="list-group-item mb-2">
+        <h5>{{ rec.product.fin_prdt_nm }} <small class="text-muted">({{ rec.product.fin_co.kor_co_nm }})</small></h5>
+        <p>추천 점수: <strong>{{ rec.score }}</strong></p>
+        <p>추천 이유: {{ rec.reason }}</p>
+        <a href="{% url 'savings:deposit_detail' rec.product.id %}" class="btn btn-sm btn-primary">
+          상품 상세보기
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}

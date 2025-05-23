@@ -1,56 +1,60 @@
+# mbti/views.py
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.http import JsonResponse
 from django.db.models import Count
+from django.urls import reverse
+
 from .services import calculate_financial_mbti
+from savings.services import recommend_for_user
+from savings.models import DepositProduct, AnnuityProduct
+
+
 import requests
 from django.conf import settings
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import (
-    Survey, SurveyQuestion, SurveyResponse, 
-    PersonalityType, FinancialProduct, 
-    Recommendation, UserShare
-)
-from .serializers import (
-    SurveyQuestionSerializer,
-)
 
+from .models import (
+    Survey, SurveyQuestion, SurveyResponse,
+    PersonalityType, Recommendation, UserShare
+)
+from .serializers import SurveyQuestionSerializer
 from boards.models import Board
+
+import openai
+openai.api_key = settings.OPENAI_API_KEY
+
 
 @login_required
 def survey(request):
-    # 최신 설문을 가져오거나 404
-    current_survey = get_object_or_404(Survey, pk=1)  # pk=1 번 설문을 사용 중이라면 1, 
-    # 아니면 Survey.objects.latest('created_at') 로 변경 가능
+    current_survey = get_object_or_404(Survey, pk=1)
     questions = SurveyQuestion.objects.filter(survey=current_survey).order_by('order')
-    
+
     if not questions.exists():
         return render(request, 'error.html', {
             'message': '등록된 설문 문항이 없습니다. 관리자에게 문의하세요.'
         })
 
     if request.method == 'POST':
-        # 기존 응답 전부 삭제
         SurveyResponse.objects.filter(
             user=request.user,
             question__survey=current_survey
         ).delete()
-        
-        # 새 응답 생성
-        for question in questions:
-            val = request.POST.get(f'question_{question.id}')
+
+        for q in questions:
+            val = request.POST.get(f'question_{q.id}')
             if val and val.isdigit():
                 SurveyResponse.objects.create(
                     user=request.user,
-                    question=question,
+                    question=q,
                     answer_value=int(val)
                 )
 
-        # 유형 계산 및 저장
         mbti_type = calculate_financial_mbti(request.user, current_survey)
         request.user.mbti_type = mbti_type
         request.user.mbti_test_date = timezone.now()
@@ -70,20 +74,57 @@ def result(request):
         return redirect('mbti:survey')
 
     mbti_type = request.user.mbti_type
-    recommendations = Recommendation.objects.filter(personality_type=mbti_type)[:5]
-    similar_users_count = request.user._meta.model.objects.filter(mbti_type=mbti_type).count()
 
-    popular_posts = Board.objects.filter(
-        author__mbti_type=mbti_type
-    ).annotate(comment_count=Count('comments')).order_by('-comment_count')[:3]
+    # OpenAI + hybrid 추천 실행
+    financial_recs = recommend_for_user(request.user, top_n=5)
 
-    context = {
+    # 템플릿으로 넘길 형태로 가공
+    recommendations = []
+    for rec in financial_recs:
+        prod     = rec['product']
+        provider = rec['provider']
+        title    = rec['title']
+        score    = rec['score']
+        reason   = rec['reason']
+
+        # 상품 상세 URL
+        if isinstance(prod, DepositProduct):
+            link = reverse('savings:deposit_detail', args=[prod.id])
+            desc = f"가입 방법: {prod.join_way}, 우대조건: {prod.spcl_cnd}, 한도: {prod.max_limit}"
+        else:
+            link = reverse('savings:annuity_detail', args=[prod.id])
+            desc = (
+                f"유형: {prod.prdt_type_nm}, "
+                f"평균수익률: {prod.avg_prft_rate}%, "
+                f"판매 시작일: {prod.sale_strt_day.strftime('%Y-%m-%d')}"
+            )
+
+        recommendations.append({
+            'name': title,
+            'provider': provider,
+            'description': desc,
+            'link': link,
+            'score': score,
+            'reason': reason,
+        })
+
+    similar_users_count = request.user.__class__.objects.filter(
+        mbti_type=mbti_type
+    ).count()
+
+    popular_posts = (
+        Board.objects
+             .filter(author__mbti_type=mbti_type)
+             .annotate(comment_count=Count('comments'))
+             .order_by('-comment_count')[:3]
+    )
+
+    return render(request, 'result.html', {
         'mbti_type': mbti_type,
         'recommendations': recommendations,
         'similar_users_count': similar_users_count,
         'popular_posts': popular_posts,
-    }
-    return render(request, 'result.html', context)
+    })
 
 
 @login_required
@@ -91,7 +132,6 @@ def result(request):
 def share_result(request):
     if not request.user.mbti_type:
         return JsonResponse({'error': 'No MBTI type found'}, status=400)
-
     platform = request.POST.get('platform')
     if platform:
         UserShare.objects.create(user=request.user, platform=platform)
@@ -103,12 +143,12 @@ def share_result(request):
 def recommendations(request):
     if not request.user.mbti_type:
         return redirect('mbti:survey')
-
     mbti_type = request.user.mbti_type
-    recommendations = Recommendation.objects.filter(personality_type=mbti_type)
-
-    context = {'mbti_type': mbti_type, 'recommendations': recommendations}
-    return render(request, 'recommendations.html', context)
+    recs = Recommendation.objects.filter(personality_type=mbti_type)
+    return render(request, 'recommendations.html', {
+        'mbti_type': mbti_type,
+        'recommendations': recs,
+    })
 
 
 def personality_types(request):
@@ -118,22 +158,20 @@ def personality_types(request):
 
 def personality_type_detail(request, type_code):
     mbti_type = get_object_or_404(PersonalityType, type_code=type_code)
-    recommendations = Recommendation.objects.filter(personality_type=mbti_type)
+    recs = Recommendation.objects.filter(personality_type=mbti_type)
     users_count = mbti_type.users.count()
-
-    context = {
+    return render(request, 'type_detail.html', {
         'mbti_type': mbti_type,
-        'recommendations': recommendations,
+        'recommendations': recs,
         'users_count': users_count,
-    }
-    return render(request, 'type_detail.html', context)
+    })
 
 
 @api_view(['GET'])
 def api_questions(request):
     survey_id = request.GET.get('survey')
-    questions = SurveyQuestion.objects.filter(survey=survey_id).order_by('order')
-    serializer = SurveyQuestionSerializer(questions, many=True)
+    qs = SurveyQuestion.objects.filter(survey=survey_id).order_by('order')
+    serializer = SurveyQuestionSerializer(qs, many=True)
     return Response(serializer.data)
 
 
@@ -141,20 +179,16 @@ def api_questions(request):
 def api_submit_responses(request):
     user = request.user
     data = request.data
-
     SurveyResponse.objects.filter(user=user, question__survey=data['survey']).delete()
-
-    for response in data['responses']:
+    for r in data['responses']:
         SurveyResponse.objects.create(
             user=user,
-            question_id=response['question'],
-            answer_value=response['answer']
+            question_id=r['question'],
+            answer_value=r['answer']
         )
-
     mbti_type = calculate_financial_mbti(user, Survey.objects.get(id=data['survey']))
     user.mbti_type = mbti_type
     user.save()
-
     return Response({'status': 'success', 'mbti_type': mbti_type.type_code})
 
 
@@ -167,8 +201,7 @@ def fetch_deposit_products():
     }
     resp = requests.get(url, params=params)
     resp.raise_for_status()
-    data = resp.json()
-    return data['result']
+    return resp.json()['result']
 
 
 def main_page(request):

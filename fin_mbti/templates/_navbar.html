@@ -12,16 +12,20 @@
           <a class="nav-link" href="{% url 'mbti:survey' %}">성향 테스트</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="{% url 'mbti:types' %}">유형 살펴보기</a>
-        </li>
-        <li class="nav-item">
           <a class="nav-link" href="{% url 'boards:index' %}">커뮤니티</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="{% url 'savings:deposit_list' %}">예적금 비교</a>
+          <a class="nav-link" href="{% url 'savings:deposit_list' %}">예·적금 비교</a>
         </li>
         <li class="nav-item">
           <a class="nav-link" href="{% url 'savings:spot_prices' %}">현물 가격 비교</a>
+        </li>
+        <!-- 여기에 추가 -->
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'savings:video_search_page' %}">관련 종목 영상</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'savings:bank_search' %}">내 주변 은행 검색</a>
         </li>
       </ul>
       

@@ -9,6 +9,7 @@ from datetime import datetime
 import os
 import requests
 from django.conf import settings
+from .services import recommend_for_user
 
 def deposit_list(request):
     products = DepositProduct.objects.all().order_by('-created_at')
@@ -105,3 +106,26 @@ def youtube_search_api(request):
     resp = requests.get(url, params=params)
     data = resp.json()
     return JsonResponse(data)
+
+def bank_search_page(request):
+    # 템플릿에 JS 키만 넘겨 줍니다
+    return render(request, 'savings/bank_search.html', {
+        'KAKAO_JS_KEY': settings.KAKAO_JS_KEY
+    })
+
+def banks_search_api(request):
+    q = request.GET.get('q')
+    if not q:
+        return JsonResponse({'error': 'no query'}, status=400)
+
+    url = 'https://dapi.kakao.com/v2/local/search/address.json'
+    headers = {'Authorization': f'KakaoAK {settings.KAKAO_REST_KEY}'}
+    resp = requests.get(url, params={'query': q}, headers=headers)
+    return JsonResponse(resp.json())
+
+@login_required
+def recommendations_view(request):
+    recommendations = recommend_for_user(request.user, top_n=5)
+    return render(request, 'savings/recommendations.html', {
+        'recommendations': recommendations
+    })

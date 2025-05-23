@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 from pathlib import Path
 import environ
 import os
+from celery.schedules import crontab
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,6 +26,9 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 # API 키 읽어오기
 FINLIFE_API_KEY = env('FINLIFE_API_KEY')
 YOUTUBE_API_KEY = env('YOUTUBE_API_KEY')
+KAKAO_JS_KEY   = env('KAKAO_JS_KEY')
+KAKAO_REST_KEY = env('KAKAO_REST_KEY')
+OPENAI_API_KEY = os.environ.get("OPEN_AI_API_KEY")
 # FINLIFE_API_KEY = os.getenv("FINLIFE_API_KEY")
 
 
@@ -130,10 +135,23 @@ USE_L10N = True
 USE_TZ = True
 
 
+CELERY_BEAT_SCHEDULE = {
+    'daily-sync-companies': {
+        'task': 'savings.tasks.update_finlife_companies',
+        'schedule': crontab(hour=3, minute=0),
+    },
+    'daily-sync-annuity': {
+        'task': 'savings.tasks.update_finlife_annuity',
+        'schedule': crontab(hour=3, minute=30),
+    },
+}
+
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
+STATICFILES_DIRS = [ BASE_DIR / 'static' ]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
@@ -154,3 +172,4 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10
 }
+

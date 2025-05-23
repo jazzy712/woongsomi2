@@ -3,52 +3,57 @@ from django.conf import settings
 
 class Board(models.Model):
     CATEGORY_CHOICES = [
-        ('general', '일반 토론'),
-        ('investment', '투자 정보'),
-        ('mbti_type', 'MBTI 유형별 토론'),
+        ('general',        '일반 토론'),
+        ('investment',     '투자 정보'),
+        ('mbti_type',      'MBTI 유형별 토론'),
         ('recommendation', '상품 추천/후기'),
     ]
-    
-    author = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True
-    )
-    title = models.CharField(max_length=100)
-    content = models.TextField()
-    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='general')
-    related_mbti_type = models.ForeignKey(
-        'mbti.PersonalityType', on_delete=models.SET_NULL, null=True, blank=True,
+
+    author             = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    title              = models.CharField(max_length=100)
+    content            = models.TextField()
+    category           = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='general')
+    related_mbti_type  = models.ForeignKey(
+        'mbti.PersonalityType',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='related_boards'
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    view_count = models.PositiveIntegerField(default=0)  # 조회수
-    likes = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='liked_boards', blank=True)
-    
-    def __str__(self):
-        return self.title
-    
+    created_at         = models.DateTimeField(auto_now_add=True)
+    updated_at         = models.DateTimeField(auto_now=True)
+    view_count         = models.PositiveIntegerField(default=0)
+    likes              = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='liked_boards', blank=True)
+
     class Meta:
         ordering = ['-created_at']
 
+    def __str__(self):
+        return f'[{self.get_category_display()}] {self.title}'
+
+    @property
+    def comment_count(self):
+        return self.comments.count()
+
 
 class Comment(models.Model):
-    author = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True
-    )
-    board = models.ForeignKey(
-        Board, on_delete=models.CASCADE, related_name='comments'
-    )
-    parent_comment = models.ForeignKey(
+    author          = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    board           = models.ForeignKey(Board, on_delete=models.CASCADE, related_name='comments')
+    parent_comment  = models.ForeignKey(
         'self',
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name='replies',
+        related_name='replies'
     )
-    content = models.CharField(max_length=500)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    likes = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='liked_comments', blank=True)
-    
+    content         = models.CharField(max_length=500)
+    created_at      = models.DateTimeField(auto_now_add=True)
+    updated_at      = models.DateTimeField(auto_now=True)
+    likes           = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='liked_comments', blank=True)
+
+    class Meta:
+        ordering = ['created_at']
+
     def __str__(self):
-        return f"Comment by {self.author.username if self.author else 'Unknown'}: {self.content[:20]}"
+        user = self.author.username if self.author else 'Unknown'
+        return f'Comment by {user} on "{self.board.title}"'
