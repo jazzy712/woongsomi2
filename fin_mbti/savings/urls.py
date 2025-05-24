@@ -18,4 +18,5 @@ urlpatterns = [
     path('api/banks/', views.banks_search_api, name='banks_search_api'),
     path('recommendations/', recommendations_view, name='recommendations'),
     path('compare/', views.compare_deposits, name='compare_deposits'),
+    path('api/sync-finlife/', views.finlife_sync, name='api_sync_finlife'),
 ]   

@@ -10,7 +10,7 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
     path('mbti/', include('mbti.urls')),
     path('savings/', include('savings.urls')),
-    path('', RedirectView.as_view(pattern_name='mbti:survey'), name='home'),  # 루트 URL은 설문으로 리다이렉트
+    path('', RedirectView.as_view(url='/mbti/', permanent=False)),  # 루트 URL은 설문으로 리다이렉트
 ]
 
 # 미디어 파일 제공

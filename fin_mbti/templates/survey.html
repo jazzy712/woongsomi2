@@ -6,69 +6,29 @@
   <form method="post">{% csrf_token %}
     {% for q in questions %}
       <div class="mb-4">
-        <p class="form-label fw-semibold">{{ forloop.counter }}. {{ q.question_text }}</p>
+        {# 앞에 붙은 숫자 제거 후 forloop.counter로 번호 매김 #}
+        <p class="form-label fw-semibold">{{ forloop.counter }}. {{ q.question_text|slice:"3:" }}</p>
         <div>
-          <div class="form-check form-check-inline">
-            <input
-              class="form-check-input"
-              type="radio"
-              name="question_{{ q.id }}"
-              id="q{{ q.id }}_1"
-              value="1"
-              required
-            >
-            <label class="form-check-label" for="q{{ q.id }}_1">
-              전혀 아니다
-            </label>
-          </div>
-          <div class="form-check form-check-inline">
-            <input
-              class="form-check-input"
-              type="radio"
-              name="question_{{ q.id }}"
-              id="q{{ q.id }}_2"
-              value="2"
-            >
-            <label class="form-check-label" for="q{{ q.id }}_2">
-              그렇지 않다
-            </label>
-          </div>
-          <div class="form-check form-check-inline">
-            <input
-              class="form-check-input"
-              type="radio"
-              name="question_{{ q.id }}"
-              id="q{{ q.id }}_3"
-              value="3"
-            >
-            <label class="form-check-label" for="q{{ q.id }}_3">
-              보통이다
-            </label>
-          </div>
-          <div class="form-check form-check-inline">
-            <input
-              class="form-check-input"
-              type="radio"
-              name="question_{{ q.id }}"
-              id="q{{ q.id }}_4"
-              value="4"
-            >
-            <label class="form-check-label" for="q{{ q.id }}_4">
-              그렇다
-            </label>
-          </div>
-          <div class="form-check form-check-inline">
-            <input
-              class="form-check-input"
-              type="radio"
-              name="question_{{ q.id }}"
-              id="q{{ q.id }}_5"
-              value="5"
-            >
-            <label class="form-check-label" for="q{{ q.id }}_5">
-              매우 그렇다
-            </label>
-          </div>
+          {% for score in "12345" %}
+            <div class="form-check form-check-inline">
+              <input
+                class="form-check-input"
+                type="radio"
+                name="question_{{ q.id }}"
+                id="q{{ q.id }}_{{ score }}"
+                value="{{ score }}"
+                {% if score == "1" %}required{% endif %}
+              >
+              <label class="form-check-label" for="q{{ q.id }}_{{ score }}">
+                {% if score == "1" %}전혀 아니다
+                {% elif score == "2" %}그렇지 않다
+                {% elif score == "3" %}보통이다
+                {% elif score == "4" %}그렇다
+                {% elif score == "5" %}매우 그렇다
+                {% endif %}
+              </label>
+            </div>
+          {% endfor %}
         </div>
       </div>
     {% endfor %}

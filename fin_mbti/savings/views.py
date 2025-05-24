@@ -4,6 +4,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from .models import DepositProduct, AnnuityProduct
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.dateparse import parse_date
 from django.urls import reverse as url_reverse
 import pandas as pd
@@ -11,11 +13,19 @@ from datetime import datetime
 import os
 import requests, operator
 from django.conf import settings
-from .services import recommend_for_user
+from .services import recommend_for_user, sync_companies, sync_deposit_products, sync_annuity_products
 from itertools import groupby
 import pandas as pd
 
+
 def deposit_list(request):
+    # DB에 예·적금 상품이 하나도 없으면 한 번만 동기화
+    if DepositProduct.objects.count() == 0:
+        groups = ['020000','030300','030900','040000','055000','060000']
+        for grp in groups:
+            sync_companies(top_fin_grp_no=grp)
+            sync_deposit_products(top_fin_grp_no=grp)
+
     products = DepositProduct.objects.all().order_by('-created_at')
     return render(request, 'savings/deposit_list.html', {'products': products})
 
@@ -240,4 +250,21 @@ def compare_deposits(request):
         'grouped': grouped,
         'sort_by': sort_by,
         'order':   order,
+    })
+
+@require_POST
+@staff_member_required
+def finlife_sync(request):
+    """
+    POST 요청 시(관리자만) FinLife API로
+    회사·예·적금·연금 데이터를 동기화하고 JSON 응답을 반환합니다.
+    """
+    groups = ['020000','030300','030900','040000','055000','060000']
+    for grp in groups:
+        sync_companies(top_fin_grp_no=grp)
+        sync_deposit_products(top_fin_grp_no=grp)
+        sync_annuity_products(top_fin_grp_no=grp)
+    return JsonResponse({
+        'status': 'success',
+        'synced_groups': groups,
     })

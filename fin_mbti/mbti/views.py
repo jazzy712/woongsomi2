@@ -10,6 +10,7 @@ from django.utils               import timezone
 from django.db.models           import Count
 from django.urls                import reverse
 from django.http                import JsonResponse
+from collections import defaultdict
 
 from rest_framework.response    import Response
 from rest_framework.decorators  import api_view
@@ -32,7 +33,6 @@ from savings.models       import DepositProduct, AnnuityProduct
 
 # OpenAI 키 설정
 openai.api_key = settings.OPENAI_API_KEY
-
 
 @login_required
 def survey(request):

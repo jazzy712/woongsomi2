@@ -2,7 +2,7 @@
 
 from django import forms
 from django.contrib.auth import get_user_model, password_validation
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.core.exceptions import ValidationError
 from django.forms.widgets import ClearableFileInput
 
@@ -66,3 +66,15 @@ class ProfileUpdateForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+    
+    
+class CustomUserChangeForm(UserChangeForm):
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'nickname',
+            'email',
+            'mbti_badge_visible',
+            'profile_image',
+        )
